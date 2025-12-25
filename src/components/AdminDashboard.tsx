@@ -31,6 +31,7 @@ import MessagesSettingsPage from './pages/MessagesSettingsPage';
 import CouriersManagementPage from './pages/CouriersManagementPage';
 import FamiliesListPage from './pages/FamiliesListPage';
 import AuditLogPage from './pages/AuditLogPage';
+import DataMigrationPage from './pages/DataMigrationPage';
 
 interface NavItem {
   id: string;
@@ -184,7 +185,8 @@ export default function AdminDashboard({ activeTab, setActiveTab }: AdminDashboa
       name: 'أدوات التطوير',
       icon: Settings,
       children: [
-        { id: 'test-supabase', name: 'اختبار Supabase', icon: Database }
+        { id: 'test-supabase', name: 'اختبار Supabase', icon: Database },
+        { id: 'data-migration', name: 'نقل البيانات', icon: Database }
       ]
     }
   ];
@@ -608,6 +610,11 @@ export default function AdminDashboard({ activeTab, setActiveTab }: AdminDashboa
           <TestSupabasePage />
         </div>
       );
+    }
+
+    // Data Migration page
+    if (activeTab === 'data-migration') {
+      return <DataMigrationPage />;
     }
 
     // Overview Tab

@@ -9,7 +9,7 @@ import AdminDashboard from './components/AdminDashboard';
 import OrganizationsDashboard from './components/OrganizationsDashboard';
 import FamiliesDashboard from './components/FamiliesDashboard';
 import { ErrorConsole } from './components/ErrorConsole';
-import { DataMigrationPage } from './components/pages/DataMigrationPage';
+import DataMigrationPage from './components/pages/DataMigrationPage';
 import { Bug } from 'lucide-react';
 
 type PageType = 'landing' | 'admin' | 'organizations' | 'families' | 'migration';
