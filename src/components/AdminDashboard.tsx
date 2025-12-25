@@ -6,7 +6,6 @@ import { useAlerts } from '../context/AlertsContext';
 import { useErrorLogger } from '../utils/errorLogger';
 import { statisticsService, alertsService, organizationsService, familiesService, beneficiariesService, packagesService } from '../services/supabaseService';
 import { Shield, Users, Package, Truck, Bell, BarChart3, Settings, MapPin, Calendar, FileText, AlertTriangle, CheckCircle, Clock, Plus, Search, Filter, Download, Eye, Edit, Phone, Star, UserPlus, Building2, Heart, TrendingUp, Activity, Database, MessageSquare, UserCheck, Crown, Key, Lock, ChevronRight, RefreshCw, LogOut } from 'lucide-react';
-import { calculateStats } from '../data/mockData';
 import PermissionsManagement from './PermissionsManagement';
 import { Button, Card, StatCard, Badge } from './ui';
 
@@ -57,7 +56,14 @@ export default function AdminDashboard({ activeTab, setActiveTab }: AdminDashboa
   const [beneficiaryIdForIndividualSend, setBeneficiaryIdForIndividualSend] = useState<string | null>(null);
 
   // State for Supabase data
-  const [stats, setStats] = useState<any>(calculateStats());
+  const [stats, setStats] = useState<any>({
+    totalBeneficiaries: 0,
+    totalPackages: 0,
+    deliveredPackages: 0,
+    activeOrganizations: 0,
+    activeTasks: 0,
+    deliveryRate: 0
+  });
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState<string | null>(null);
   const [organizations, setOrganizations] = useState<any[]>([]);

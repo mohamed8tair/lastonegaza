@@ -49,8 +49,22 @@ export const beneficiariesService = {
     return data || [];
   },
 
-  async getAllDetailed(): Promise<Beneficiary[]> {
-    return this.getAll();
+  async getAllDetailed(): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('beneficiaries')
+      .select(`
+        *,
+        organization:organizations(id, name, type),
+        family:families(id, name, head_of_family)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching detailed beneficiaries:', error);
+      return [];
+    }
+
+    return data || [];
   },
 
   async search(searchTerm: string): Promise<Beneficiary[]> {
@@ -295,6 +309,25 @@ export const packagesService = {
     return data || [];
   },
 
+  async getAllDetailed(): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('packages')
+      .select(`
+        *,
+        organization:organizations(id, name, type),
+        family:families(id, name, head_of_family),
+        beneficiary:beneficiaries(id, name, full_name, phone, address)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching detailed packages:', error);
+      return [];
+    }
+
+    return data || [];
+  },
+
   async getByBeneficiary(beneficiaryId: string): Promise<Package[]> {
     const { data, error } = await supabase
       .from('packages')
@@ -382,10 +415,29 @@ export const tasksService = {
     const { data, error } = await supabase
       .from('tasks')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false});
 
     if (error) {
       console.error('Error fetching tasks:', error);
+      return [];
+    }
+
+    return data || [];
+  },
+
+  async getAllDetailed(): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('tasks')
+      .select(`
+        *,
+        package:packages(id, name, type, description),
+        beneficiary:beneficiaries(id, name, full_name, phone, address, location),
+        courier:couriers(id, name, phone, status, rating)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching detailed tasks:', error);
       return [];
     }
 
@@ -609,25 +661,63 @@ export const permissionsService = {
 
 export const statisticsService = {
   async getOverallStats(): Promise<any> {
-    const [beneficiaries, packages, tasks, organizations] = await Promise.all([
+    const [
+      allBeneficiaries,
+      verifiedBeneficiaries,
+      activeBeneficiaries,
+      allPackages,
+      deliveredPackages,
+      pendingPackages,
+      allTasks,
+      completedTasks,
+      activeTasks,
+      failedTasks,
+      allOrganizations,
+      activeOrganizations,
+      allCouriers,
+      activeCouriers,
+      allFamilies
+    ] = await Promise.all([
       supabase.from('beneficiaries').select('*', { count: 'exact', head: true }),
+      supabase.from('beneficiaries').select('*', { count: 'exact', head: true }).eq('identity_status', 'verified'),
+      supabase.from('beneficiaries').select('*', { count: 'exact', head: true }).eq('status', 'active'),
       supabase.from('packages').select('*', { count: 'exact', head: true }),
+      supabase.from('packages').select('*', { count: 'exact', head: true }).eq('status', 'delivered'),
+      supabase.from('packages').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
       supabase.from('tasks').select('*', { count: 'exact', head: true }),
-      supabase.from('organizations').select('*', { count: 'exact', head: true })
+      supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('status', 'delivered'),
+      supabase.from('tasks').select('*', { count: 'exact', head: true }).in('status', ['pending', 'assigned', 'in_progress']),
+      supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('status', 'failed'),
+      supabase.from('organizations').select('*', { count: 'exact', head: true }),
+      supabase.from('organizations').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+      supabase.from('couriers').select('*', { count: 'exact', head: true }),
+      supabase.from('couriers').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+      supabase.from('families').select('*', { count: 'exact', head: true })
     ]);
 
-    const deliveredPackages = await supabase
-      .from('packages')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'delivered');
+    const totalPackagesCount = allPackages.count || 0;
+    const deliveredPackagesCount = deliveredPackages.count || 0;
+    const totalTasksCount = allTasks.count || 0;
+    const completedTasksCount = completedTasks.count || 0;
 
     return {
-      totalBeneficiaries: beneficiaries.count || 0,
-      totalPackages: packages.count || 0,
-      deliveredPackages: deliveredPackages.count || 0,
-      activeTasks: tasks.count || 0,
-      activeOrganizations: organizations.count || 0,
-      deliveryRate: packages.count ? ((deliveredPackages.count || 0) / packages.count * 100) : 0
+      totalBeneficiaries: allBeneficiaries.count || 0,
+      verifiedBeneficiaries: verifiedBeneficiaries.count || 0,
+      activeBeneficiaries: activeBeneficiaries.count || 0,
+      totalPackages: totalPackagesCount,
+      deliveredPackages: deliveredPackagesCount,
+      pendingPackages: pendingPackages.count || 0,
+      totalTasks: totalTasksCount,
+      completedTasks: completedTasksCount,
+      activeTasks: activeTasks.count || 0,
+      failedTasks: failedTasks.count || 0,
+      totalOrganizations: allOrganizations.count || 0,
+      activeOrganizations: activeOrganizations.count || 0,
+      totalCouriers: allCouriers.count || 0,
+      activeCouriers: activeCouriers.count || 0,
+      totalFamilies: allFamilies.count || 0,
+      deliveryRate: totalPackagesCount ? (deliveredPackagesCount / totalPackagesCount * 100) : 0,
+      successRate: totalTasksCount ? (completedTasksCount / totalTasksCount * 100) : 0
     };
   },
 
