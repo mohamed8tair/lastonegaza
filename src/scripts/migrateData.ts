@@ -38,6 +38,24 @@ interface MigrationResult {
 export class DataMigration {
   private results: MigrationResult[] = [];
 
+  private async checkExistingRecords(tableName: string): Promise<number> {
+    try {
+      const { count, error } = await supabase
+        .from(tableName)
+        .select('*', { count: 'exact', head: true });
+
+      if (error) {
+        console.warn(`⚠️  Could not check ${tableName}:`, error.message);
+        return 0;
+      }
+
+      return count || 0;
+    } catch (error) {
+      console.warn(`⚠️  Error checking ${tableName}:`, error);
+      return 0;
+    }
+  }
+
   async migrateAll(): Promise<{ success: boolean; results: MigrationResult[] }> {
     console.log('🚀 Starting data migration...');
 
@@ -85,10 +103,10 @@ export class DataMigration {
     const errors: any[] = [];
     let successCount = 0;
 
-    const { data: existing } = await supabase.from('roles').select('id');
-    if (existing && existing.length > 0) {
-      console.log(`⚠️  Skipping Roles - ${existing.length} records already exist`);
-      this.results.push({ success: true, table: 'roles', count: existing.length, errors: [] });
+    const existingCount = await this.checkExistingRecords('roles');
+    if (existingCount > 0) {
+      console.log(`⚠️  Skipping Roles - ${existingCount} records already exist`);
+      this.results.push({ success: true, table: 'roles', count: existingCount, errors: [] });
       return;
     }
 
@@ -118,10 +136,10 @@ export class DataMigration {
     const errors: any[] = [];
     let successCount = 0;
 
-    const { data: existing } = await supabase.from('permissions').select('id');
-    if (existing && existing.length > 0) {
-      console.log(`⚠️  Skipping Permissions - ${existing.length} records already exist`);
-      this.results.push({ success: true, table: 'permissions', count: existing.length, errors: [] });
+    const existingCount = await this.checkExistingRecords('permissions');
+    if (existingCount > 0) {
+      console.log(`⚠️  Skipping Permissions - ${existingCount} records already exist`);
+      this.results.push({ success: true, table: 'permissions', count: existingCount, errors: [] });
       return;
     }
 
