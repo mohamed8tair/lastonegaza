@@ -154,7 +154,7 @@ export default function GazaMap({ points, onPointClick, activeFilter = 'all', cl
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">المنطقة:</span>
-                    <span className="font-medium">{point.data.detailedAddress.district}</span>
+                    <span className="font-medium">{point.data.detailedAddress?.district ?? 'غير محدد'}</span>
                   </div>
                 </div>
                 

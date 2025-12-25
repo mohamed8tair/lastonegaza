@@ -43,12 +43,13 @@ export default function TrackingPage({ onNavigateToIndividualSend }: TrackingPag
   }).filter(Boolean) as MapPoint[];
 
   // Get unique values for filters
-  const provinces = [...new Set(mockBeneficiaries.map(b => b.detailedAddress.governorate))];
+  const provinces = [...new Set(mockBeneficiaries.filter(b => b.detailedAddress).map(b => b.detailedAddress.governorate))];
   const cities = [...new Set(mockBeneficiaries
-    .filter(b => provinceFilter === 'all' || b.detailedAddress.governorate === provinceFilter)
+    .filter(b => b.detailedAddress && (provinceFilter === 'all' || b.detailedAddress.governorate === provinceFilter))
     .map(b => b.detailedAddress.city))];
   const districts = [...new Set(mockBeneficiaries
-    .filter(b => 
+    .filter(b =>
+      b.detailedAddress &&
       (provinceFilter === 'all' || b.detailedAddress.governorate === provinceFilter) &&
       (cityFilter === 'all' || b.detailedAddress.city === cityFilter)
     )
@@ -82,9 +83,9 @@ export default function TrackingPage({ onNavigateToIndividualSend }: TrackingPag
     if (typeFilter !== 'all' && packageInfo?.type !== typeFilter) return false;
     
     // Geographic filters
-    if (provinceFilter !== 'all' && beneficiary.detailedAddress.governorate !== provinceFilter) return false;
-    if (cityFilter !== 'all' && beneficiary.detailedAddress.city !== cityFilter) return false;
-    if (districtFilter !== 'all' && beneficiary.detailedAddress.district !== districtFilter) return false;
+    if (provinceFilter !== 'all' && beneficiary.detailedAddress?.governorate !== provinceFilter) return false;
+    if (cityFilter !== 'all' && beneficiary.detailedAddress?.city !== cityFilter) return false;
+    if (districtFilter !== 'all' && beneficiary.detailedAddress?.district !== districtFilter) return false;
     
     // Date filter
     if (task) {
@@ -123,7 +124,7 @@ export default function TrackingPage({ onNavigateToIndividualSend }: TrackingPag
         id: p.id,
         beneficiary: p.data.name,
         status: p.status,
-        location: `${p.data.detailedAddress.governorate} - ${p.data.detailedAddress.city}`
+        location: `${p.data.detailedAddress?.governorate ?? 'غير محدد'} - ${p.data.detailedAddress?.city ?? 'غير محدد'}`
       }))
     };
     

@@ -264,28 +264,36 @@ export default function BeneficiaryProfileModal({
                       <span className="text-gray-600">العنوان المختصر:</span>
                       <p className="font-medium text-gray-900 mt-1">{beneficiary.address}</p>
                     </div>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <span className="text-gray-600">المحافظة:</span>
-                        <p className="font-medium text-gray-900 mt-1">{beneficiary.detailedAddress.governorate}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">المدينة:</span>
-                        <p className="font-medium text-gray-900 mt-1">{beneficiary.detailedAddress.city}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">الحي:</span>
-                        <p className="font-medium text-gray-900 mt-1">{beneficiary.detailedAddress.district}</p>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">الشارع:</span>
-                        <p className="font-medium text-gray-900 mt-1">{beneficiary.detailedAddress.street || 'غير محدد'}</p>
-                      </div>
-                    </div>
-                    {beneficiary.detailedAddress.additionalInfo && (
-                      <div>
-                        <span className="text-gray-600">معلومات إضافية:</span>
-                        <p className="font-medium text-gray-900 mt-1">{beneficiary.detailedAddress.additionalInfo}</p>
+                    {beneficiary.detailedAddress ? (
+                      <>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div>
+                            <span className="text-gray-600">المحافظة:</span>
+                            <p className="font-medium text-gray-900 mt-1">{beneficiary.detailedAddress.governorate}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">المدينة:</span>
+                            <p className="font-medium text-gray-900 mt-1">{beneficiary.detailedAddress.city}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">الحي:</span>
+                            <p className="font-medium text-gray-900 mt-1">{beneficiary.detailedAddress.district}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">الشارع:</span>
+                            <p className="font-medium text-gray-900 mt-1">{beneficiary.detailedAddress.street || 'غير محدد'}</p>
+                          </div>
+                        </div>
+                        {beneficiary.detailedAddress.additionalInfo && (
+                          <div>
+                            <span className="text-gray-600">معلومات إضافية:</span>
+                            <p className="font-medium text-gray-900 mt-1">{beneficiary.detailedAddress.additionalInfo}</p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="bg-gray-50 p-3 rounded-lg">
+                        <p className="text-sm text-gray-500">العنوان التفصيلي غير متوفر</p>
                       </div>
                     )}
                   </div>

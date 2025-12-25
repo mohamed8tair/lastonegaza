@@ -65,9 +65,9 @@ export default function BulkSendPage() {
       // Apply other filters
       if (filters.benefitStatus === 'never' && beneficiary.totalPackages > 0) return false;
       if (filters.benefitStatus === 'recent' && beneficiary.totalPackages === 0) return false;
-      
-      if (filters.area && beneficiary.detailedAddress.governorate !== getGovernorateFromFilter(filters.area)) return false;
-      
+
+      if (filters.area && beneficiary.detailedAddress?.governorate !== getGovernorateFromFilter(filters.area)) return false;
+
       return true;
     });
   };

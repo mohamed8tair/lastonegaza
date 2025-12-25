@@ -280,7 +280,7 @@ export default function IndividualSendPage({ beneficiaryIdToPreselect, onBenefic
                         <p className="text-sm text-gray-600">
                           {beneficiary.nationalId} - {beneficiary.phone}
                         </p>
-                        <p className="text-sm text-gray-500">{beneficiary.detailedAddress.district}</p>
+                        <p className="text-sm text-gray-500">{beneficiary.detailedAddress?.district ?? 'غير محدد'}</p>
                       </div>
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getIdentityColor(beneficiary.identityStatus)}`}>
                         {beneficiary.identityStatus === 'verified' ? 'موثق' :
@@ -331,7 +331,7 @@ export default function IndividualSendPage({ beneficiaryIdToPreselect, onBenefic
                   <div className="flex items-center space-x-2 space-x-reverse">
                     <MapPin className="w-4 h-4 text-gray-500" />
                     <span className="text-gray-600">المنطقة:</span>
-                    <span className="font-medium text-gray-900">{selectedBeneficiary.detailedAddress.district}</span>
+                    <span className="font-medium text-gray-900">{selectedBeneficiary.detailedAddress?.district ?? 'غير محدد'}</span>
                   </div>
                   <div className="flex items-center space-x-2 space-x-reverse">
                     <Package className="w-4 h-4 text-gray-500" />
@@ -346,7 +346,7 @@ export default function IndividualSendPage({ beneficiaryIdToPreselect, onBenefic
                   <div className="flex items-center space-x-2 space-x-reverse">
                     <MapPin className="w-4 h-4 text-gray-500" />
                     <span className="text-gray-600">العنوان الكامل:</span>
-                    <span className="font-medium text-gray-900">{selectedBeneficiary.detailedAddress.street}</span>
+                    <span className="font-medium text-gray-900">{selectedBeneficiary.detailedAddress?.street ?? 'غير محدد'}</span>
                   </div>
                 </div>
               </div>

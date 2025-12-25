@@ -83,7 +83,7 @@ export default function TasksManagementPage() {
 
     // فلترة المنطقة
     if (regionFilter !== 'all' && beneficiary) {
-      if (!beneficiary.detailedAddress.governorate.includes(regionFilter)) {
+      if (!beneficiary.detailedAddress?.governorate?.includes(regionFilter)) {
         return false;
       }
     }
@@ -927,7 +927,7 @@ export default function TasksManagementPage() {
                           <>
                             <p><span className="text-blue-700">الاسم:</span> <span className="font-medium">{beneficiary.name}</span></p>
                             <p><span className="text-blue-700">الهاتف:</span> <span className="font-medium">{beneficiary.phone}</span></p>
-                            <p><span className="text-blue-700">العنوان:</span> <span className="font-medium">{beneficiary.detailedAddress.district}</span></p>
+                            <p><span className="text-blue-700">العنوان:</span> <span className="font-medium">{beneficiary.detailedAddress?.district ?? 'غير محدد'}</span></p>
                           </>
                         ) : <p className="text-gray-500">معلومات غير متاحة</p>;
                       })()}

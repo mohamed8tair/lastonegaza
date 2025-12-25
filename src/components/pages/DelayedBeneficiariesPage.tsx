@@ -47,7 +47,7 @@ export default function DelayedBeneficiariesPage() {
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">{beneficiary.name}</p>
-                  <p className="text-sm text-gray-600">متأخر منذ 3 أيام - {beneficiary.detailedAddress.district}</p>
+                  <p className="text-sm text-gray-600">متأخر منذ 3 أيام - {beneficiary.detailedAddress?.district ?? 'غير محدد'}</p>
                   <p className="text-xs text-gray-500">آخر محاولة: {new Date(beneficiary.lastReceived).toLocaleDateString('ar-SA')}</p>
                 </div>
               </div>

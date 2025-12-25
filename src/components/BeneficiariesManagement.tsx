@@ -255,7 +255,7 @@ export default function BeneficiariesManagement({ initialTab = 'list' }: Benefic
                                   <Star className="w-4 h-4 text-green-600" title="موثق" />
                                 )}
                               </div>
-                              <div className="text-sm text-gray-500">{beneficiary.detailedAddress.city}</div>
+                              <div className="text-sm text-gray-500">{beneficiary.detailedAddress?.city ?? 'غير محدد'}</div>
                             </div>
                           </div>
                         </td>
@@ -266,7 +266,7 @@ export default function BeneficiariesManagement({ initialTab = 'list' }: Benefic
                           {beneficiary.phone}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {beneficiary.detailedAddress.district}
+                          {beneficiary.detailedAddress?.district ?? 'غير محدد'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex flex-col space-y-1">
@@ -480,7 +480,7 @@ export default function BeneficiariesManagement({ initialTab = 'list' }: Benefic
                       </div>
                       <div>
                         <p className="font-medium text-gray-900">{beneficiary.name}</p>
-                        <p className="text-sm text-gray-600">متأخر منذ 3 أيام - {beneficiary.detailedAddress.district}</p>
+                        <p className="text-sm text-gray-600">متأخر منذ 3 أيام - {beneficiary.detailedAddress?.district ?? 'غير محدد'}</p>
                         <p className="text-xs text-gray-500">آخر محاولة: {new Date(beneficiary.lastReceived).toLocaleDateString('en-CA')}</p>
                       </div>
                     </div>
