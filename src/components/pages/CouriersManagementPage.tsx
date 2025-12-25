@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Truck, Search, Filter, Plus, Eye, Edit, Phone, Mail, Star, MapPin, Clock, CheckCircle, AlertTriangle, RefreshCw, Award, TrendingUp, BarChart3 } from 'lucide-react';
-import { mockCouriers, type Courier } from '../../data/mockData';
+import { type Courier } from '../../data/mockData';
 import { useErrorLogger } from '../../utils/errorLogger';
 import { Button, Card, Badge, Modal, Input } from '../ui';
 import { couriersService } from '../../services/supabaseService';
@@ -23,15 +23,10 @@ export default function CouriersManagementPage() {
     try {
       setLoading(true);
       const data = await couriersService.getAll();
-      if (data.length === 0) {
-        setCouriers(mockCouriers);
-        logInfo('استخدام البيانات الوهمية للمندوبين', 'CouriersManagementPage');
-      } else {
-        setCouriers(data as any);
-      }
+      setCouriers(data as any);
     } catch (error) {
       logError(error, 'CouriersManagementPage.loadCouriers');
-      setCouriers(mockCouriers);
+      setCouriers([]);
     } finally {
       setLoading(false);
     }

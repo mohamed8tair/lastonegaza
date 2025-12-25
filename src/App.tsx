@@ -9,9 +9,10 @@ import AdminDashboard from './components/AdminDashboard';
 import OrganizationsDashboard from './components/OrganizationsDashboard';
 import FamiliesDashboard from './components/FamiliesDashboard';
 import { ErrorConsole } from './components/ErrorConsole';
+import { DataMigrationPage } from './components/pages/DataMigrationPage';
 import { Bug } from 'lucide-react';
 
-type PageType = 'landing' | 'admin' | 'organizations' | 'families';
+type PageType = 'landing' | 'admin' | 'organizations' | 'families' | 'migration';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<PageType>('landing');
@@ -103,9 +104,14 @@ function AppContent({
           <LandingPage onNavigateTo={handleNavigateTo} />
         </ErrorBoundary>
       )}
+      {currentPage === 'migration' && (
+        <ErrorBoundary componentName="DataMigrationPage">
+          <DataMigrationPage />
+        </ErrorBoundary>
+      )}
       {currentPage === 'admin' && loggedInUser && (
         <ErrorBoundary componentName="AdminDashboard">
-          <AdminDashboard 
+          <AdminDashboard
             activeTab={activeTab}
             setActiveTab={setActiveTab}
           />
