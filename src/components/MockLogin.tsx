@@ -59,7 +59,7 @@ export default function MockLogin({ onLogin }: MockLoginProps) {
       role: 'مشرف المؤسسة',
       type: 'organization',
       icon: Building2,
-      color: 'bg-purple-600'
+      color: 'bg-teal-600'
     },
     {
       email: 'family@abuamer.ps',

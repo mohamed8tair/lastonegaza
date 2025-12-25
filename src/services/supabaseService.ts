@@ -640,6 +640,91 @@ export const systemUsersService = {
     }
 
     return data || [];
+  },
+
+  async getByEmail(email: string): Promise<any | null> {
+    const { data, error } = await supabase
+      .from('system_users')
+      .select(`
+        *,
+        role:roles(id, name, description, permissions)
+      `)
+      .eq('email', email)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching user by email:', error);
+      return null;
+    }
+
+    if (data) {
+      return {
+        ...data,
+        role: data.role?.name || 'user',
+        full_name: data.name,
+        permissions: data.role?.permissions || []
+      };
+    }
+
+    return null;
+  },
+
+  async getById(id: string): Promise<any | null> {
+    const { data, error } = await supabase
+      .from('system_users')
+      .select(`
+        *,
+        role:roles(id, name, description, permissions)
+      `)
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching user by id:', error);
+      return null;
+    }
+
+    if (data) {
+      return {
+        ...data,
+        role: data.role?.name || 'user',
+        full_name: data.name,
+        permissions: data.role?.permissions || []
+      };
+    }
+
+    return null;
+  },
+
+  async update(id: string, updates: Partial<SystemUser>): Promise<SystemUser | null> {
+    const { data, error } = await supabase
+      .from('system_users')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating system user:', error);
+      return null;
+    }
+
+    return data;
+  },
+
+  async create(user: Omit<SystemUser, 'id' | 'created_at'>): Promise<SystemUser | null> {
+    const { data, error } = await supabase
+      .from('system_users')
+      .insert(user)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating system user:', error);
+      throw new Error('فشل في إضافة المستخدم');
+    }
+
+    return data;
   }
 };
 

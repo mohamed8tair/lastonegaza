@@ -74,14 +74,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const loadUserData = async (email: string) => {
     try {
-      const { data: users } = await supabase
-        .from('system_users')
-        .select('*')
-        .eq('email', email)
-        .maybeSingle();
-
-      if (users) {
-        setLoggedInUser(users as AuthUser);
+      const user = await systemUsersService.getByEmail(email);
+      if (user) {
+        setLoggedInUser(user as AuthUser);
       }
     } catch (error) {
       console.error('Error loading user data:', error);
@@ -90,11 +85,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string = 'dummy-password') => {
     try {
-      const { data: user } = await supabase
-        .from('system_users')
-        .select('*')
-        .eq('email', email)
-        .maybeSingle();
+      const user = await systemUsersService.getByEmail(email);
 
       if (user && user.status === 'active') {
         await systemUsersService.update(user.id, {
@@ -107,8 +98,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } as AuthUser;
 
         setLoggedInUser(updatedUser);
+      } else if (user && user.status !== 'active') {
+        throw new Error('المستخدم غير نشط. يرجى التواصل مع الإدارة.');
       } else {
-        throw new Error('User not found or inactive');
+        throw new Error('البريد الإلكتروني غير مسجل في النظام.');
       }
     } catch (error) {
       console.error('Login error:', error);
