@@ -1,11 +1,28 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { type SystemUser } from '../data/mockData';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import { systemUsersService } from '../services/supabaseService';
+
+interface AuthUser {
+  id: string;
+  email: string;
+  full_name?: string;
+  role: string;
+  permissions?: string[];
+  associated_type?: 'organization' | 'family' | null;
+  associated_id?: string | null;
+  status: string;
+  last_login?: string;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: any;
+}
 
 interface AuthContextType {
-  loggedInUser: SystemUser | null;
-  login: (user: SystemUser) => void;
-  logout: () => void;
-  updateUser: (updates: Partial<SystemUser>) => void;
+  loggedInUser: AuthUser | null;
+  login: (email: string, password?: string) => Promise<void>;
+  logout: () => Promise<void>;
+  updateUser: (updates: Partial<AuthUser>) => void;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,22 +40,93 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [loggedInUser, setLoggedInUser] = useState<SystemUser | null>(null);
+  const [loggedInUser, setLoggedInUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = (user: SystemUser) => {
-    // تحديث آخر دخول
-    const updatedUser = {
-      ...user,
-      lastLogin: new Date().toISOString()
+  useEffect(() => {
+    checkUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        await loadUserData(session.user.email!);
+      } else if (event === 'SIGNED_OUT') {
+        setLoggedInUser(null);
+      }
+    });
+
+    return () => {
+      subscription?.unsubscribe();
     };
-    setLoggedInUser(updatedUser);
+  }, []);
+
+  const checkUser = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.email) {
+        await loadUserData(session.user.email);
+      }
+    } catch (error) {
+      console.error('Error checking user:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const logout = () => {
-    setLoggedInUser(null);
+  const loadUserData = async (email: string) => {
+    try {
+      const { data: users } = await supabase
+        .from('system_users')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (users) {
+        setLoggedInUser(users as AuthUser);
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    }
   };
 
-  const updateUser = (updates: Partial<SystemUser>) => {
+  const login = async (email: string, password: string = 'dummy-password') => {
+    try {
+      const { data: user } = await supabase
+        .from('system_users')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (user && user.status === 'active') {
+        await systemUsersService.update(user.id, {
+          last_login: new Date().toISOString()
+        });
+
+        const updatedUser = {
+          ...user,
+          last_login: new Date().toISOString()
+        } as AuthUser;
+
+        setLoggedInUser(updatedUser);
+      } else {
+        throw new Error('User not found or inactive');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setLoggedInUser(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+      throw error;
+    }
+  };
+
+  const updateUser = (updates: Partial<AuthUser>) => {
     if (loggedInUser) {
       setLoggedInUser({
         ...loggedInUser,
@@ -51,7 +139,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loggedInUser,
     login,
     logout,
-    updateUser
+    updateUser,
+    loading
   };
 
   return (

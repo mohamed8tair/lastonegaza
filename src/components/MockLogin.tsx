@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Shield, Building2, Users, LogIn, Mail, Lock, Eye, EyeOff, AlertTriangle, CheckCircle } from 'lucide-react';
-import { mockSystemUsers, mockOrganizations, mockFamilies, type SystemUser } from '../data/mockData';
+import { supabase } from '../lib/supabaseClient';
 
 interface MockLoginProps {
-  onLogin: (user: SystemUser) => void;
+  onLogin: (email: string) => Promise<void>;
 }
 
 export default function MockLogin({ onLogin }: MockLoginProps) {
@@ -11,6 +11,29 @@ export default function MockLogin({ onLogin }: MockLoginProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [systemUsers, setSystemUsers] = useState<any[]>([]);
+  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [families, setFamilies] = useState<any[]>([]);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const [usersRes, orgsRes, familiesRes] = await Promise.all([
+        supabase.from('system_users').select('*'),
+        supabase.from('organizations').select('*'),
+        supabase.from('families').select('*')
+      ]);
+
+      if (usersRes.data) setSystemUsers(usersRes.data);
+      if (orgsRes.data) setOrganizations(orgsRes.data);
+      if (familiesRes.data) setFamilies(familiesRes.data);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    }
+  };
 
   // حسابات تجريبية سريعة
   const quickAccounts = [
@@ -50,7 +73,7 @@ export default function MockLogin({ onLogin }: MockLoginProps) {
 
   const handleLogin = async (loginEmail?: string) => {
     const emailToUse = loginEmail || email;
-    
+
     if (!emailToUse.trim()) {
       setError('يرجى إدخال البريد الإلكتروني');
       return;
@@ -59,35 +82,23 @@ export default function MockLogin({ onLogin }: MockLoginProps) {
     setIsLoading(true);
     setError('');
 
-    // محاكاة تأخير الشبكة
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // البحث عن المستخدم في البيانات الوهمية
-    const user = mockSystemUsers.find(u => u.email.toLowerCase() === emailToUse.toLowerCase());
-
-    if (user) {
-      if (user.status === 'active') {
-        // تحديث آخر دخول (محاكاة)
-        user.lastLogin = new Date().toISOString();
-        onLogin(user);
-      } else {
-        setError('الحساب غير نشط أو موقوف');
-      }
-    } else {
-      setError('البريد الإلكتروني غير مسجل في النظام');
+    try {
+      await onLogin(emailToUse);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'حدث خطأ في تسجيل الدخول');
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
-  const getAssociatedEntityName = (user: SystemUser) => {
-    if (user.associatedType === 'organization' && user.associatedId) {
-      const org = mockOrganizations.find(o => o.id === user.associatedId);
+  const getAssociatedEntityName = (user: any) => {
+    if (user.associated_type === 'organization' && user.associated_id) {
+      const org = organizations.find(o => o.id === user.associated_id);
       return org ? ` - ${org.name}` : '';
     }
-    if (user.associatedType === 'family' && user.associatedId) {
-      const family = mockFamilies.find(f => f.id === user.associatedId);
-      return family ? ` - ${family.name}` : '';
+    if (user.associated_type === 'family' && user.associated_id) {
+      const family = families.find(f => f.id === user.associated_id);
+      return family ? ` - ${family.name || family.family_name}` : '';
     }
     return '';
   };
@@ -225,13 +236,13 @@ export default function MockLogin({ onLogin }: MockLoginProps) {
             <div className="mt-6 bg-white/60 rounded-lg p-4">
               <h3 className="font-medium text-gray-900 mb-3 text-sm">المستخدمين المتاحين:</h3>
               <div className="space-y-2 text-sm">
-                {mockSystemUsers.map((user) => {
+                {systemUsers.map((user) => {
                   const associatedName = getAssociatedEntityName(user);
                   return (
                     <div key={user.id} className="flex justify-between items-center">
                       <span className="text-gray-700 text-xs">{user.email}</span>
                       <span className="text-gray-500 text-xs">
-                        {user.name.split(' - ')[0]}{associatedName}
+                        {(user.full_name || user.name || '').split(' - ')[0]}{associatedName}
                       </span>
                     </div>
                   );

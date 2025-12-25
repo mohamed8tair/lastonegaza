@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { UserCheck, CheckCircle, Clock, AlertTriangle, Users, Shield, Camera, FileText, Upload, RefreshCw, Search, Filter, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, Minus } from 'lucide-react';
-import { mockBeneficiaries, type Beneficiary } from '../../data/mockData';
 import BeneficiaryProfileModal from '../BeneficiaryProfileModal';
 import { Button, Card, Input, Badge, ConfirmationModal } from '../ui';
 import { useBeneficiaries } from '../../hooks/useBeneficiaries';
@@ -13,27 +12,27 @@ interface StatusManagementPageProps {
 export default function StatusManagementPage({ onNavigateToIndividualSend }: StatusManagementPageProps) {
   const { logInfo, logError } = useErrorLogger();
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [selectedBeneficiary, setSelectedBeneficiary] = useState<Beneficiary | null>(null);
-  
+  const [selectedBeneficiary, setSelectedBeneficiary] = useState<any | null>(null);
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
-  
+
   // Filtering state
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [identityStatusFilter, setIdentityStatusFilter] = useState('all');
   const [governorateFilter, setGovernorateFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
-  
+
   // Sorting state
-  const [sortColumn, setSortColumn] = useState<string>('createdAt');
+  const [sortColumn, setSortColumn] = useState<string>('created_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  
+
   // Batch actions state
-  const [selectedBeneficiaries, setSelectedBeneficiaries] = useState<string[]>([]);
+  const [selectedBeneficiariesIds, setSelectedBeneficiariesIds] = useState<string[]>([]);
   const [showBatchToolbar, setShowBatchToolbar] = useState(false);
-  
+
   // Confirmation modal state
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{
@@ -43,88 +42,105 @@ export default function StatusManagementPage({ onNavigateToIndividualSend }: Sta
     beneficiaryName?: string;
   } | null>(null);
 
+  // Use Supabase data
+  const {
+    allBeneficiaries,
+    loading,
+    error,
+    updateBeneficiary,
+    refetch
+  } = useBeneficiaries({ useDetailed: true });
+
   // Get unique values for filters
-  const governorates = [...new Set(mockBeneficiaries.map(b => b.detailedAddress.governorate))];
-  
+  const governorates = useMemo(() => {
+    return [...new Set(allBeneficiaries.map(b => b.address_governorate || b.detailedAddress?.governorate).filter(Boolean))];
+  }, [allBeneficiaries]);
+
   // Apply filters and sorting
   const getFilteredAndSortedBeneficiaries = () => {
-    let filtered = [...mockBeneficiaries];
+    let filtered = [...allBeneficiaries];
     
     // Apply search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(b => 
-        b.name.toLowerCase().includes(searchLower) ||
-        b.nationalId.includes(searchTerm) ||
-        b.phone.includes(searchTerm)
+      filtered = filtered.filter(b =>
+        (b.name || b.full_name || '').toLowerCase().includes(searchLower) ||
+        (b.national_id || b.nationalId || '').includes(searchTerm) ||
+        (b.phone || '').includes(searchTerm)
       );
     }
-    
+
     // Apply status filters
     if (statusFilter !== 'all') {
       filtered = filtered.filter(b => b.status === statusFilter);
     }
-    
+
     if (identityStatusFilter !== 'all') {
-      filtered = filtered.filter(b => b.identityStatus === identityStatusFilter);
+      filtered = filtered.filter(b => (b.identity_status || b.identityStatus) === identityStatusFilter);
     }
-    
+
     if (governorateFilter !== 'all') {
-      filtered = filtered.filter(b => b.detailedAddress.governorate === governorateFilter);
+      filtered = filtered.filter(b =>
+        (b.address_governorate || b.detailedAddress?.governorate) === governorateFilter
+      );
     }
     
     if (dateFilter !== 'all') {
       const now = new Date();
       const filterDate = new Date();
-      
+
       switch (dateFilter) {
         case 'today':
           filterDate.setHours(0, 0, 0, 0);
-          filtered = filtered.filter(b => new Date(b.createdAt) >= filterDate);
+          filtered = filtered.filter(b => new Date(b.created_at || b.createdAt) >= filterDate);
           break;
         case 'week':
           filterDate.setDate(now.getDate() - 7);
-          filtered = filtered.filter(b => new Date(b.createdAt) >= filterDate);
+          filtered = filtered.filter(b => new Date(b.created_at || b.createdAt) >= filterDate);
           break;
         case 'month':
           filterDate.setMonth(now.getMonth() - 1);
-          filtered = filtered.filter(b => new Date(b.createdAt) >= filterDate);
+          filtered = filtered.filter(b => new Date(b.created_at || b.createdAt) >= filterDate);
           break;
       }
     }
-    
+
     // Apply sorting
     filtered.sort((a, b) => {
       let aValue: any;
       let bValue: any;
-      
+
       switch (sortColumn) {
         case 'name':
-          aValue = a.name;
-          bValue = b.name;
+        case 'full_name':
+          aValue = a.name || a.full_name;
+          bValue = b.name || b.full_name;
           break;
         case 'nationalId':
-          aValue = a.nationalId;
-          bValue = b.nationalId;
+        case 'national_id':
+          aValue = a.nationalId || a.national_id;
+          bValue = b.nationalId || b.national_id;
           break;
         case 'createdAt':
-          aValue = new Date(a.createdAt);
-          bValue = new Date(b.createdAt);
+        case 'created_at':
+          aValue = new Date(a.created_at || a.createdAt);
+          bValue = new Date(b.created_at || b.createdAt);
           break;
         case 'lastReceived':
-          aValue = new Date(a.lastReceived);
-          bValue = new Date(b.lastReceived);
+        case 'last_received':
+          aValue = new Date(a.last_received || a.lastReceived);
+          bValue = new Date(b.last_received || b.lastReceived);
           break;
         default:
-          aValue = a.createdAt;
-          bValue = b.createdAt;
+          aValue = a.created_at || a.createdAt;
+          bValue = b.created_at || b.createdAt;
       }
-      
+
       if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
       if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-    
+
     return filtered;
   };
   
@@ -138,9 +154,9 @@ export default function StatusManagementPage({ onNavigateToIndividualSend }: Sta
   
   // Update batch toolbar visibility
   React.useEffect(() => {
-    setShowBatchToolbar(selectedBeneficiaries.length > 0);
-  }, [selectedBeneficiaries]);
-  
+    setShowBatchToolbar(selectedBeneficiariesIds.length > 0);
+  }, [selectedBeneficiariesIds]);
+
   // Reset pagination when filters change
   React.useEffect(() => {
     setCurrentPage(1);
@@ -161,23 +177,23 @@ export default function StatusManagementPage({ onNavigateToIndividualSend }: Sta
   };
   
   const handleSelectBeneficiary = (beneficiaryId: string) => {
-    setSelectedBeneficiaries(prev => 
-      prev.includes(beneficiaryId) 
+    setSelectedBeneficiariesIds(prev =>
+      prev.includes(beneficiaryId)
         ? prev.filter(id => id !== beneficiaryId)
         : [...prev, beneficiaryId]
     );
   };
-  
+
   const handleSelectAll = () => {
-    if (selectedBeneficiaries.length === paginatedBeneficiaries.length) {
-      setSelectedBeneficiaries([]);
+    if (selectedBeneficiariesIds.length === paginatedBeneficiaries.length) {
+      setSelectedBeneficiariesIds([]);
     } else {
-      setSelectedBeneficiaries(paginatedBeneficiaries.map(b => b.id));
+      setSelectedBeneficiariesIds(paginatedBeneficiaries.map(b => b.id));
     }
   };
-  
+
   const handleClearSelection = () => {
-    setSelectedBeneficiaries([]);
+    setSelectedBeneficiariesIds([]);
   };
   
   // Individual actions
@@ -198,87 +214,88 @@ export default function StatusManagementPage({ onNavigateToIndividualSend }: Sta
     });
     setShowConfirmModal(true);
   };
+
+  const handleRejectIdentity = (beneficiaryId: string, beneficiaryName: string) => {
+    handleRequestReupload(beneficiaryId, beneficiaryName);
+  };
   
   // Batch actions
   const handleBatchApprove = () => {
     setConfirmAction({
       type: 'batch-approve',
-      beneficiaryIds: selectedBeneficiaries
+      beneficiaryIds: selectedBeneficiariesIds
     });
     setShowConfirmModal(true);
   };
-  
+
   const handleBatchReupload = () => {
     setConfirmAction({
       type: 'batch-reupload',
-      beneficiaryIds: selectedBeneficiaries
+      beneficiaryIds: selectedBeneficiariesIds
     });
     setShowConfirmModal(true);
   };
-  
+
   // Execute confirmed action
-  const executeConfirmedAction = () => {
+  const executeConfirmedAction = async () => {
     if (!confirmAction) return;
-    
+
     try {
       switch (confirmAction.type) {
         case 'approve':
           if (confirmAction.beneficiaryId) {
-            // محاكاة تحديث حالة التوثيق إلى "موثق"
-            const beneficiaryIndex = mockBeneficiaries.findIndex(b => b.id === confirmAction.beneficiaryId);
-            if (beneficiaryIndex !== -1) {
-              mockBeneficiaries[beneficiaryIndex].identityStatus = 'verified';
-              mockBeneficiaries[beneficiaryIndex].updatedAt = new Date().toISOString();
-            }
+            await updateBeneficiary(confirmAction.beneficiaryId, {
+              identity_status: 'verified',
+              updated_at: new Date().toISOString()
+            });
             logInfo(`تم توثيق هوية المستفيد: ${confirmAction.beneficiaryName}`, 'StatusManagementPage');
+            await refetch();
           }
           break;
-          
+
         case 'reupload':
           if (confirmAction.beneficiaryId) {
-            // محاكاة طلب إعادة رفع الوثائق
-            const beneficiaryIndex = mockBeneficiaries.findIndex(b => b.id === confirmAction.beneficiaryId);
-            if (beneficiaryIndex !== -1) {
-              mockBeneficiaries[beneficiaryIndex].identityStatus = 'pending';
-              mockBeneficiaries[beneficiaryIndex].updatedAt = new Date().toISOString();
-            }
+            await updateBeneficiary(confirmAction.beneficiaryId, {
+              identity_status: 'pending',
+              updated_at: new Date().toISOString()
+            });
             logInfo(`تم طلب إعادة رفع الوثائق من المستفيد: ${confirmAction.beneficiaryName}. سيتم إرسال إشعار له لرفع وثائق جديدة.`, 'StatusManagementPage');
+            await refetch();
           }
           break;
-          
+
         case 'batch-approve':
           if (confirmAction.beneficiaryIds) {
-            // محاكاة توثيق جماعي
-            confirmAction.beneficiaryIds.forEach(id => {
-              const beneficiaryIndex = mockBeneficiaries.findIndex(b => b.id === id);
-              if (beneficiaryIndex !== -1) {
-                mockBeneficiaries[beneficiaryIndex].identityStatus = 'verified';
-                mockBeneficiaries[beneficiaryIndex].updatedAt = new Date().toISOString();
-              }
-            });
+            await Promise.all(
+              confirmAction.beneficiaryIds.map(id =>
+                updateBeneficiary(id, {
+                  identity_status: 'verified',
+                  updated_at: new Date().toISOString()
+                })
+              )
+            );
             logInfo(`تم توثيق ${confirmAction.beneficiaryIds.length} مستفيد بشكل جماعي`, 'StatusManagementPage');
-            setSelectedBeneficiaries([]);
+            setSelectedBeneficiariesIds([]);
+            await refetch();
           }
           break;
-          
+
         case 'batch-reupload':
           if (confirmAction.beneficiaryIds) {
-            // محاكاة طلب إعادة رفع جماعي
-            confirmAction.beneficiaryIds.forEach(id => {
-              const beneficiaryIndex = mockBeneficiaries.findIndex(b => b.id === id);
-              if (beneficiaryIndex !== -1) {
-                mockBeneficiaries[beneficiaryIndex].identityStatus = 'pending';
-                mockBeneficiaries[beneficiaryIndex].updatedAt = new Date().toISOString();
-              }
-            });
+            await Promise.all(
+              confirmAction.beneficiaryIds.map(id =>
+                updateBeneficiary(id, {
+                  identity_status: 'pending',
+                  updated_at: new Date().toISOString()
+                })
+              )
+            );
             logInfo(`تم طلب إعادة رفع الوثائق من ${confirmAction.beneficiaryIds.length} مستفيد بشكل جماعي. سيتم إرسال إشعارات لهم لرفع وثائق جديدة.`, 'StatusManagementPage');
-            setSelectedBeneficiaries([]);
+            setSelectedBeneficiariesIds([]);
+            await refetch();
           }
           break;
       }
-      
-      // Force re-render by updating state
-      setCurrentPage(currentPage);
     } catch (error) {
       logError(error as Error, 'StatusManagementPage');
     }
@@ -328,14 +345,14 @@ export default function StatusManagementPage({ onNavigateToIndividualSend }: Sta
       {/* Actions Bar */}
       <div className="flex items-center justify-between">
         <div className="flex space-x-3 space-x-reverse">
-          <Button 
+          <Button
             variant="success"
             icon={RefreshCw}
             iconPosition="right"
-            onClick={() => {
-              // محاكاة تحديث البيانات
+            onClick={async () => {
+              await refetch();
               setCurrentPage(1);
-              setSelectedBeneficiaries([]);
+              setSelectedBeneficiariesIds([]);
               logInfo('تم تحديث حالات التوثيق', 'StatusManagementPage');
             }}
           >
@@ -475,7 +492,7 @@ export default function StatusManagementPage({ onNavigateToIndividualSend }: Sta
             <div className="flex items-center space-x-3 space-x-reverse">
               <CheckCircle className="w-5 h-5 text-blue-600" />
               <span className="font-medium text-blue-800">
-                تم تحديد {selectedBeneficiaries.length} مستفيد
+                تم تحديد {selectedBeneficiariesIds.length} مستفيد
               </span>
             </div>
             <div className="flex space-x-2 space-x-reverse">
@@ -484,14 +501,14 @@ export default function StatusManagementPage({ onNavigateToIndividualSend }: Sta
                 size="sm"
                 onClick={handleBatchApprove}
               >
-                توثيق المحدد ({selectedBeneficiaries.length})
+                توثيق المحدد ({selectedBeneficiariesIds.length})
               </Button>
               <Button
                 variant="warning"
                 size="sm"
                 onClick={handleBatchReupload}
               >
-                طلب إعادة رفع ({selectedBeneficiaries.length})
+                طلب إعادة رفع ({selectedBeneficiariesIds.length})
               </Button>
               <Button
                 variant="secondary"
@@ -514,7 +531,7 @@ export default function StatusManagementPage({ onNavigateToIndividualSend }: Sta
               <Shield className="w-8 h-8 text-green-600" />
             </div>
             <span className="text-3xl font-bold text-green-600">
-              {filteredBeneficiaries.filter(b => b.identityStatus === 'verified').length}
+              {filteredBeneficiaries.filter(b => (b.identity_status || b.identityStatus) === 'verified').length}
             </span>
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">موثقين</h3>
@@ -535,7 +552,7 @@ export default function StatusManagementPage({ onNavigateToIndividualSend }: Sta
               <Clock className="w-8 h-8 text-yellow-600" />
             </div>
             <span className="text-3xl font-bold text-yellow-600">
-              {filteredBeneficiaries.filter(b => b.identityStatus === 'pending').length}
+              {filteredBeneficiaries.filter(b => (b.identity_status || b.identityStatus) === 'pending').length}
             </span>
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">بانتظار التوثيق</h3>
@@ -556,7 +573,7 @@ export default function StatusManagementPage({ onNavigateToIndividualSend }: Sta
               <AlertTriangle className="w-8 h-8 text-red-600" />
             </div>
             <span className="text-3xl font-bold text-red-600">
-              {filteredBeneficiaries.filter(b => b.identityStatus === 'rejected').length}
+              {filteredBeneficiaries.filter(b => (b.identity_status || b.identityStatus) === 'rejected').length}
             </span>
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">مرفوض التوثيق</h3>
@@ -606,7 +623,7 @@ export default function StatusManagementPage({ onNavigateToIndividualSend }: Sta
                 <th className="px-6 py-3 text-right">
                   <input
                     type="checkbox"
-                    checked={selectedBeneficiaries.length === paginatedBeneficiaries.length && paginatedBeneficiaries.length > 0}
+                    checked={selectedBeneficiariesIds.length === paginatedBeneficiaries.length && paginatedBeneficiaries.length > 0}
                     onChange={handleSelectAll}
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
@@ -665,7 +682,7 @@ export default function StatusManagementPage({ onNavigateToIndividualSend }: Sta
                     <td className="px-6 py-4 whitespace-nowrap">
                       <input
                         type="checkbox"
-                        checked={selectedBeneficiaries.includes(beneficiary.id)}
+                        checked={selectedBeneficiariesIds.includes(beneficiary.id)}
                         onChange={() => handleSelectBeneficiary(beneficiary.id)}
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
@@ -676,50 +693,50 @@ export default function StatusManagementPage({ onNavigateToIndividualSend }: Sta
                           <Users className="w-4 h-4 text-blue-600" />
                         </div>
                         <div>
-                          <div className="text-sm font-medium text-gray-900">{beneficiary.name}</div>
-                          <div className="text-sm text-gray-500">{beneficiary.detailedAddress?.city}</div>
+                          <div className="text-sm font-medium text-gray-900">{beneficiary.full_name || beneficiary.name}</div>
+                          <div className="text-sm text-gray-500">{beneficiary.address_city || beneficiary.detailedAddress?.city}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {beneficiary.nationalId}
+                      {beneficiary.national_id || beneficiary.nationalId}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {beneficiary.phone}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {beneficiary.detailedAddress?.governorate}
+                      {beneficiary.address_governorate || beneficiary.detailedAddress?.governorate}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge 
+                      <Badge
                         variant={
-                          beneficiary.identityStatus === 'verified' ? 'success' :
-                          beneficiary.identityStatus === 'pending' ? 'warning' : 'error'
+                          (beneficiary.identity_status || beneficiary.identityStatus) === 'verified' ? 'success' :
+                          (beneficiary.identity_status || beneficiary.identityStatus) === 'pending' ? 'warning' : 'error'
                         }
                         size="sm"
                       >
-                        {beneficiary.identityStatus === 'verified' ? 'موثق' :
-                         beneficiary.identityStatus === 'pending' ? 'بانتظار التوثيق' : 'مرفوض التوثيق'}
+                        {(beneficiary.identity_status || beneficiary.identityStatus) === 'verified' ? 'موثق' :
+                         (beneficiary.identity_status || beneficiary.identityStatus) === 'pending' ? 'بانتظار التوثيق' : 'مرفوض التوثيق'}
                       </Badge>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(beneficiary.createdAt).toLocaleDateString('en-CA')}
+                      {new Date(beneficiary.created_at || beneficiary.createdAt).toLocaleDateString('en-CA')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex space-x-2 space-x-reverse">
-                        {beneficiary.identityStatus === 'pending' && (
+                        {(beneficiary.identity_status || beneficiary.identityStatus) === 'pending' && (
                           <>
                             <Button
                               variant="success"
                               size="sm"
-                              onClick={() => handleApproveIdentity(beneficiary.id, beneficiary.name)}
+                              onClick={() => handleApproveIdentity(beneficiary.id, beneficiary.full_name || beneficiary.name)}
                             >
                               توثيق
                             </Button>
                             <Button
                               variant="warning"
                               size="sm"
-                              onClick={() => handleRequestReupload(beneficiary.id, beneficiary.name)}
+                              onClick={() => handleRequestReupload(beneficiary.id, beneficiary.full_name || beneficiary.name)}
                             >
                               إعادة رفع
                             </Button>
@@ -810,20 +827,20 @@ export default function StatusManagementPage({ onNavigateToIndividualSend }: Sta
         <p className="text-gray-600 mb-4">المستفيدين الجدد في انتظار التحقق من البيانات (عرض مبسط)</p>
         
         <div className="space-y-4">
-          {filteredBeneficiaries.filter(b => b.identityStatus === 'pending').slice(0, 5).map((beneficiary) => (
+          {filteredBeneficiaries.filter(b => (b.identity_status || b.identityStatus) === 'pending').slice(0, 5).map((beneficiary) => (
             <div key={beneficiary.id} className="flex items-center justify-between p-4 bg-yellow-50 rounded-xl border border-yellow-200">
               <div className="flex items-center space-x-4 space-x-reverse">
                 <div className="bg-yellow-100 p-2 rounded-lg">
                   <UserCheck className="w-5 h-5 text-yellow-600" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">{beneficiary.name}</p>
-                  <p className="text-sm text-gray-600">رقم الهوية: {beneficiary.nationalId}</p>
-                  <p className="text-xs text-gray-500">تم الإضافة: {new Date(beneficiary.createdAt).toLocaleDateString('en-CA')}</p>
+                  <p className="font-medium text-gray-900">{beneficiary.full_name || beneficiary.name}</p>
+                  <p className="text-sm text-gray-600">رقم الهوية: {beneficiary.national_id || beneficiary.nationalId}</p>
+                  <p className="text-xs text-gray-500">تم الإضافة: {new Date(beneficiary.created_at || beneficiary.createdAt).toLocaleDateString('en-CA')}</p>
                   <div className="flex items-center space-x-2 space-x-reverse mt-2">
                     <Camera className="w-3 h-3 text-gray-400" />
                     <span className="text-xs text-gray-500">
-                      {beneficiary.identityImageUrl ? 'تم رفع صورة الهوية' : 'لم يتم رفع صورة الهوية'}
+                      {(beneficiary.identity_image_url || beneficiary.identityImageUrl) ? 'تم رفع صورة الهوية' : 'لم يتم رفع صورة الهوية'}
                     </span>
                   </div>
                 </div>
@@ -832,7 +849,7 @@ export default function StatusManagementPage({ onNavigateToIndividualSend }: Sta
                 <Button
                   variant="success"
                   size="sm"
-                  onClick={() => handleApproveIdentity(beneficiary.id, beneficiary.name)}
+                  onClick={() => handleApproveIdentity(beneficiary.id, beneficiary.full_name || beneficiary.name)}
                 >
                   توثيق الهوية
                 </Button>
@@ -840,7 +857,7 @@ export default function StatusManagementPage({ onNavigateToIndividualSend }: Sta
                   variant="warning"
                   size="sm"
                   icon={RefreshCw}
-                  onClick={() => handleRequestReupload(beneficiary.id, beneficiary.name)}
+                  onClick={() => handleRequestReupload(beneficiary.id, beneficiary.full_name || beneficiary.name)}
                 >
                   طلب إعادة رفع الوثائق
                 </Button>
@@ -854,8 +871,8 @@ export default function StatusManagementPage({ onNavigateToIndividualSend }: Sta
               </div>
             </div>
           ))}
-          
-          {filteredBeneficiaries.filter(b => b.identityStatus === 'pending').length === 0 && (
+
+          {filteredBeneficiaries.filter(b => (b.identity_status || b.identityStatus) === 'pending').length === 0 && (
             <div className="text-center py-8 text-gray-500">
               <Star className="w-12 h-12 mx-auto mb-2 text-gray-300" />
               <p>لا توجد حسابات تحتاج توثيق حالياً</p>
@@ -881,19 +898,19 @@ export default function StatusManagementPage({ onNavigateToIndividualSend }: Sta
           <div className="bg-red-50 p-4 rounded-xl border border-red-200">
             <h4 className="font-medium text-red-800 mb-2">يحتاجون إعادة رفع</h4>
             <p className="text-sm text-red-600">
-              {filteredBeneficiaries.filter(b => b.identityStatus === 'rejected').length} حالة تحتاج إعادة رفع الوثائق
+              {filteredBeneficiaries.filter(b => (b.identity_status || b.identityStatus) === 'rejected').length} حالة تحتاج إعادة رفع الوثائق
             </p>
           </div>
           <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-200">
             <h4 className="font-medium text-yellow-800 mb-2">بانتظار التوثيق</h4>
             <p className="text-sm text-yellow-600">
-              {filteredBeneficiaries.filter(b => b.identityStatus === 'pending').length} حالة تحتاج مراجعة
+              {filteredBeneficiaries.filter(b => (b.identity_status || b.identityStatus) === 'pending').length} حالة تحتاج مراجعة
             </p>
           </div>
           <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
             <h4 className="font-medium text-blue-800 mb-2">تم التوثيق</h4>
             <p className="text-sm text-blue-600">
-              {filteredBeneficiaries.filter(b => b.identityStatus === 'verified').length} مستفيد موثق
+              {filteredBeneficiaries.filter(b => (b.identity_status || b.identityStatus) === 'verified').length} مستفيد موثق
             </p>
           </div>
         </div>
