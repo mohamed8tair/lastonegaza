@@ -48,6 +48,11 @@ export function transformFamily(family: any) {
     id: family.id,
     name: family.name,
     head_of_family: family.headOfFamily,
+    head_of_family_id: family.headOfFamilyId || null,
+    family_members: family.familyMembers || [],
+    total_children: family.totalChildren || 0,
+    total_medical_cases: family.totalMedicalCases || 0,
+    average_age: family.averageAge || 0,
     phone: family.phone,
     members_count: family.membersCount || 0,
     packages_distributed: family.packagesDistributed || 0,
@@ -72,6 +77,11 @@ export function transformBeneficiary(beneficiary: any) {
     organization_id: beneficiary.organizationId || null,
     family_id: beneficiary.familyId || null,
     relation_to_family: beneficiary.relationToFamily || null,
+    is_head_of_family: beneficiary.isHeadOfFamily || false,
+    spouse_id: beneficiary.spouseId || null,
+    parent_id: beneficiary.parentId || null,
+    children_ids: beneficiary.childrenIds || [],
+    medical_conditions: beneficiary.medicalConditions || [],
     profession: beneficiary.profession || '',
     marital_status: beneficiary.maritalStatus || 'single',
     economic_level: beneficiary.economicLevel || 'poor',
@@ -167,12 +177,12 @@ export function transformAlert(alert: any) {
     id: alert.id,
     type: alert.type,
     title: alert.title,
-    message: alert.message,
-    beneficiary_id: alert.beneficiaryId || null,
+    description: alert.description,
+    related_id: alert.relatedId || null,
+    related_type: alert.relatedType || null,
     priority: alert.priority || 'medium',
-    status: alert.status || 'unread',
-    created_at: transformDate(alert.createdAt),
-    read_at: alert.readAt ? transformDate(alert.readAt) : null
+    is_read: alert.isRead || false,
+    created_at: transformDate(alert.createdAt)
   };
 }
 
@@ -181,9 +191,11 @@ export function transformActivityLog(log: any) {
     id: log.id,
     action: log.action,
     user_name: log.user,
-    user_role: log.role,
-    details: log.details || '',
-    timestamp: transformDate(log.timestamp)
+    role: log.role,
+    timestamp: transformDate(log.timestamp),
+    type: log.type,
+    beneficiary_id: log.beneficiaryId || null,
+    details: log.details || ''
   };
 }
 
@@ -206,6 +218,8 @@ export function transformSystemUser(user: any) {
     email: user.email,
     phone: user.phone,
     role_id: user.roleId,
+    associated_id: user.associatedId || null,
+    associated_type: user.associatedType || null,
     status: user.status || 'active',
     last_login: user.lastLogin ? transformDate(user.lastLogin) : null,
     created_at: transformDate(user.createdAt || new Date().toISOString())

@@ -42,12 +42,22 @@ export class DataMigration {
     console.log('🚀 Starting data migration...');
 
     try {
-      await this.migrateRoles();
+      // المرحلة 1: الأساسيات (لا توجد علاقات)
       await this.migratePermissions();
-      await this.migrateSystemUsers();
+      await this.migrateRoles();
       await this.migrateOrganizations();
+
+      // المرحلة 2: العائلات (بدون head_of_family_id لتجنب العلاقات الدائرية)
       await this.migrateFamilies();
+
+      // المرحلة 3: المستفيدون (يعتمدون على Organizations و Families)
       await this.migrateBeneficiaries();
+
+      // المرحلة 4: تحديث head_of_family_id في العائلات
+      await this.updateFamiliesHeadOfFamily();
+
+      // المرحلة 5: باقي البيانات
+      await this.migrateSystemUsers();
       await this.migratePackageTemplates();
       await this.migrateCouriers();
       await this.migratePackages();
@@ -266,6 +276,37 @@ export class DataMigration {
       errors
     });
     console.log(`✓ Beneficiaries: ${successCount}/${mockBeneficiaries.length} migrated`);
+  }
+
+  private async updateFamiliesHeadOfFamily(): Promise<void> {
+    console.log('🔗 Updating families head_of_family_id...');
+    const errors: any[] = [];
+    let successCount = 0;
+
+    for (const family of mockFamilies) {
+      if (!family.headOfFamilyId) continue;
+
+      try {
+        const { error } = await supabase
+          .from('families')
+          .update({ head_of_family_id: family.headOfFamilyId })
+          .eq('id', family.id);
+
+        if (error) throw error;
+        successCount++;
+      } catch (error) {
+        console.error(`Error updating family ${family.name}:`, error);
+        errors.push({ data: family, error });
+      }
+    }
+
+    this.results.push({
+      success: errors.length === 0,
+      table: 'families (update head)',
+      count: successCount,
+      errors
+    });
+    console.log(`✓ Families head_of_family_id: ${successCount}/${mockFamilies.length} updated`);
   }
 
   private async migratePackageTemplates(): Promise<void> {
