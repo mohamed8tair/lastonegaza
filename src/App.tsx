@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './context/AuthContext';
@@ -58,33 +58,41 @@ interface AppContentProps {
   setShowErrorConsole: (show: boolean) => void;
 }
 
-function AppContent({ 
-  currentPage, 
-  activeTab, 
-  setActiveTab, 
-  handleNavigateTo, 
+function AppContent({
+  currentPage,
+  activeTab,
+  setActiveTab,
+  handleNavigateTo,
   handleNavigateBack,
   showErrorConsole,
-  setShowErrorConsole 
+  setShowErrorConsole
 }: AppContentProps) {
   const { loggedInUser, login, logout } = useAuth();
 
-  const handleLogin = (user: any) => {
-    login(user);
-    
-    if (user.roleId === 'admin' || user.associatedType === null) {
-      handleNavigateTo('admin');
-    } else if (user.associatedType === 'organization') {
-      handleNavigateTo('organizations');
-    } else if (user.associatedType === 'family') {
-      handleNavigateTo('families');
-    } else {
-      handleNavigateTo('admin');
+  useEffect(() => {
+    if (loggedInUser && currentPage === 'landing') {
+      if (loggedInUser.role === 'admin' || loggedInUser.associated_type === null) {
+        handleNavigateTo('admin');
+      } else if (loggedInUser.associated_type === 'organization') {
+        handleNavigateTo('organizations');
+      } else if (loggedInUser.associated_type === 'family') {
+        handleNavigateTo('families');
+      } else {
+        handleNavigateTo('admin');
+      }
+    }
+  }, [loggedInUser, currentPage]);
+
+  const handleLogin = async (email: string) => {
+    try {
+      await login(email);
+    } catch (error) {
+      console.error('Login failed:', error);
     }
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     handleNavigateTo('landing');
     setActiveTab('overview');
   };
