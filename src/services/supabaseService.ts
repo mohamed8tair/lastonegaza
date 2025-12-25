@@ -1,349 +1,643 @@
-import { 
-  mockBeneficiaries, 
-  mockOrganizations, 
-  mockFamilies, 
-  mockPackages, 
-  mockTasks, 
-  mockAlerts, 
-  mockActivityLog, 
-  mockCouriers,
-  mockPackageTemplates,
-  mockRoles,
-  mockSystemUsers,
-  mockPermissions,
-  calculateStats,
-  type Beneficiary,
-  type Organization,
-  type Family,
-  type Package as PackageType,
-  type Task,
-  type Alert,
-  type ActivityLog,
-  type Courier,
-  type PackageTemplate,
-  type Role,
-  type SystemUser,
-  type Permission
-} from '../data/mockData';
+import { supabase } from '../lib/supabaseClient';
+import type { Database } from '../types/database';
 
-const simulateNetworkDelay = (ms: number = 500) => 
-  new Promise(resolve => setTimeout(resolve, ms));
+type Beneficiary = Database['public']['Tables']['beneficiaries']['Row'];
+type BeneficiaryInsert = Database['public']['Tables']['beneficiaries']['Insert'];
+type BeneficiaryUpdate = Database['public']['Tables']['beneficiaries']['Update'];
+
+type Organization = Database['public']['Tables']['organizations']['Row'];
+type OrganizationInsert = Database['public']['Tables']['organizations']['Insert'];
+
+type Family = Database['public']['Tables']['families']['Row'];
+type FamilyInsert = Database['public']['Tables']['families']['Insert'];
+
+type Package = Database['public']['Tables']['packages']['Row'];
+type PackageInsert = Database['public']['Tables']['packages']['Insert'];
+
+type Task = Database['public']['Tables']['tasks']['Row'];
+type TaskInsert = Database['public']['Tables']['tasks']['Insert'];
+type TaskUpdate = Database['public']['Tables']['tasks']['Update'];
+
+type Alert = Database['public']['Tables']['alerts']['Row'];
+type AlertInsert = Database['public']['Tables']['alerts']['Insert'];
+
+type ActivityLog = Database['public']['Tables']['activity_log']['Row'];
+type ActivityLogInsert = Database['public']['Tables']['activity_log']['Insert'];
+
+type Courier = Database['public']['Tables']['couriers']['Row'];
+type CourierInsert = Database['public']['Tables']['couriers']['Insert'];
+
+type PackageTemplate = Database['public']['Tables']['package_templates']['Row'];
+type PackageTemplateInsert = Database['public']['Tables']['package_templates']['Insert'];
+
+type Role = Database['public']['Tables']['roles']['Row'];
+type SystemUser = Database['public']['Tables']['system_users']['Row'];
+type Permission = Database['public']['Tables']['permissions']['Row'];
 
 export const beneficiariesService = {
   async getAll(): Promise<Beneficiary[]> {
-    await simulateNetworkDelay();
-    return [...mockBeneficiaries];
+    const { data, error } = await supabase
+      .from('beneficiaries')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching beneficiaries:', error);
+      return [];
+    }
+
+    return data || [];
   },
 
   async getAllDetailed(): Promise<Beneficiary[]> {
-    await simulateNetworkDelay();
-    return [...mockBeneficiaries];
+    return this.getAll();
   },
 
   async search(searchTerm: string): Promise<Beneficiary[]> {
-    await simulateNetworkDelay();
-    return mockBeneficiaries.filter(b => 
-      b.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      b.nationalId.includes(searchTerm) ||
-      b.phone.includes(searchTerm)
-    );
+    const { data, error } = await supabase
+      .from('beneficiaries')
+      .select('*')
+      .or(`name.ilike.%${searchTerm}%,national_id.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error searching beneficiaries:', error);
+      return [];
+    }
+
+    return data || [];
   },
 
   async getById(id: string): Promise<Beneficiary | null> {
-    await simulateNetworkDelay();
-    return mockBeneficiaries.find(b => b.id === id) || null;
+    const { data, error } = await supabase
+      .from('beneficiaries')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching beneficiary:', error);
+      return null;
+    }
+
+    return data;
   },
 
   async getByOrganization(organizationId: string): Promise<Beneficiary[]> {
-    await simulateNetworkDelay();
-    return mockBeneficiaries.filter(b => b.organizationId === organizationId);
+    const { data, error } = await supabase
+      .from('beneficiaries')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching beneficiaries by organization:', error);
+      return [];
+    }
+
+    return data || [];
   },
 
   async getByFamily(familyId: string): Promise<Beneficiary[]> {
-    await simulateNetworkDelay();
-    return mockBeneficiaries.filter(b => b.familyId === familyId);
-  },
+    const { data, error } = await supabase
+      .from('beneficiaries')
+      .select('*')
+      .eq('family_id', familyId)
+      .order('created_at', { ascending: false });
 
-  async create(beneficiary: any): Promise<Beneficiary> {
-    await simulateNetworkDelay();
-    const newBeneficiary: Beneficiary = {
-      id: `new-${Date.now()}`,
-      name: beneficiary.name,
-      fullName: beneficiary.fullName,
-      nationalId: beneficiary.nationalId,
-      dateOfBirth: beneficiary.dateOfBirth,
-      gender: beneficiary.gender,
-      phone: beneficiary.phone,
-      address: beneficiary.address,
-      detailedAddress: beneficiary.detailedAddress,
-      location: beneficiary.location || { lat: 31.3469, lng: 34.3029 },
-      organizationId: beneficiary.organizationId,
-      familyId: beneficiary.familyId,
-      relationToFamily: beneficiary.relationToFamily,
-      profession: beneficiary.profession,
-      maritalStatus: beneficiary.maritalStatus,
-      economicLevel: beneficiary.economicLevel,
-      membersCount: beneficiary.membersCount,
-      additionalDocuments: beneficiary.additionalDocuments || [],
-      identityStatus: 'pending',
-      identityImageUrl: beneficiary.identityImageUrl,
-      status: 'active',
-      eligibilityStatus: 'under_review',
-      lastReceived: new Date().toISOString().split('T')[0],
-      totalPackages: 0,
-      notes: beneficiary.notes,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      createdBy: 'admin',
-      updatedBy: 'admin'
-    };
-    
-    mockBeneficiaries.unshift(newBeneficiary);
-    return newBeneficiary;
-  },
-
-  async update(id: string, updates: any): Promise<Beneficiary> {
-    await simulateNetworkDelay();
-    const index = mockBeneficiaries.findIndex(b => b.id === id);
-    if (index === -1) {
-      throw new Error('المستفيد غير موجود');
+    if (error) {
+      console.error('Error fetching beneficiaries by family:', error);
+      return [];
     }
-    
-    mockBeneficiaries[index] = {
-      ...mockBeneficiaries[index],
-      ...updates,
-      updatedAt: new Date().toISOString()
-    };
-    
-    return mockBeneficiaries[index];
+
+    return data || [];
+  },
+
+  async create(beneficiary: BeneficiaryInsert): Promise<Beneficiary | null> {
+    const { data, error } = await supabase
+      .from('beneficiaries')
+      .insert(beneficiary)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating beneficiary:', error);
+      throw new Error('فشل في إضافة المستفيد');
+    }
+
+    return data;
+  },
+
+  async update(id: string, updates: BeneficiaryUpdate): Promise<Beneficiary | null> {
+    const { data, error } = await supabase
+      .from('beneficiaries')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating beneficiary:', error);
+      throw new Error('فشل في تحديث المستفيد');
+    }
+
+    return data;
   },
 
   async delete(id: string): Promise<void> {
-    await simulateNetworkDelay();
-    const index = mockBeneficiaries.findIndex(b => b.id === id);
-    if (index !== -1) {
-      mockBeneficiaries.splice(index, 1);
+    const { error } = await supabase
+      .from('beneficiaries')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting beneficiary:', error);
+      throw new Error('فشل في حذف المستفيد');
     }
   }
 };
 
 export const organizationsService = {
   async getAll(): Promise<Organization[]> {
-    await simulateNetworkDelay();
-    return [...mockOrganizations];
+    const { data, error } = await supabase
+      .from('organizations')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching organizations:', error);
+      return [];
+    }
+
+    return data || [];
   },
 
   async getActive(): Promise<Organization[]> {
-    await simulateNetworkDelay();
-    return mockOrganizations.filter(org => org.status === 'active');
+    const { data, error } = await supabase
+      .from('organizations')
+      .select('*')
+      .eq('status', 'active')
+      .order('name');
+
+    if (error) {
+      console.error('Error fetching active organizations:', error);
+      return [];
+    }
+
+    return data || [];
   },
 
   async getById(id: string): Promise<Organization | null> {
-    await simulateNetworkDelay();
-    return mockOrganizations.find(org => org.id === id) || null;
+    const { data, error } = await supabase
+      .from('organizations')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching organization:', error);
+      return null;
+    }
+
+    return data;
+  },
+
+  async create(organization: OrganizationInsert): Promise<Organization | null> {
+    const { data, error } = await supabase
+      .from('organizations')
+      .insert(organization)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating organization:', error);
+      throw new Error('فشل في إضافة المؤسسة');
+    }
+
+    return data;
+  },
+
+  async update(id: string, updates: Partial<Organization>): Promise<Organization | null> {
+    const { data, error } = await supabase
+      .from('organizations')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating organization:', error);
+      throw new Error('فشل في تحديث المؤسسة');
+    }
+
+    return data;
   }
 };
 
 export const familiesService = {
   async getAll(): Promise<Family[]> {
-    await simulateNetworkDelay();
-    return [...mockFamilies];
+    const { data, error } = await supabase
+      .from('families')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching families:', error);
+      return [];
+    }
+
+    return data || [];
   },
 
   async getById(id: string): Promise<Family | null> {
-    await simulateNetworkDelay();
-    return mockFamilies.find(f => f.id === id) || null;
+    const { data, error } = await supabase
+      .from('families')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error fetching family:', error);
+      return null;
+    }
+
+    return data;
+  },
+
+  async create(family: FamilyInsert): Promise<Family | null> {
+    const { data, error } = await supabase
+      .from('families')
+      .insert(family)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating family:', error);
+      throw new Error('فشل في إضافة العائلة');
+    }
+
+    return data;
   }
 };
 
 export const packagesService = {
-  async getAll(): Promise<PackageType[]> {
-    await simulateNetworkDelay();
-    return [...mockPackages];
+  async getAll(): Promise<Package[]> {
+    const { data, error } = await supabase
+      .from('packages')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching packages:', error);
+      return [];
+    }
+
+    return data || [];
   },
 
-  async getByBeneficiary(beneficiaryId: string): Promise<PackageType[]> {
-    await simulateNetworkDelay();
-    return mockPackages.filter(p => p.beneficiaryId === beneficiaryId);
+  async getByBeneficiary(beneficiaryId: string): Promise<Package[]> {
+    const { data, error } = await supabase
+      .from('packages')
+      .select('*')
+      .eq('beneficiary_id', beneficiaryId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching packages by beneficiary:', error);
+      return [];
+    }
+
+    return data || [];
   },
 
-  async create(packageData: any): Promise<PackageType> {
-    await simulateNetworkDelay();
-    const newPackage: PackageType = {
-      id: `pkg-${Date.now()}`,
-      name: packageData.name,
-      type: packageData.type,
-      description: packageData.description,
-      value: packageData.value,
-      funder: packageData.funder,
-      organizationId: packageData.organizationId,
-      familyId: packageData.familyId,
-      beneficiaryId: packageData.beneficiaryId,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      deliveredAt: packageData.deliveredAt,
-      expiryDate: packageData.expiryDate
-    };
-    
-    mockPackages.unshift(newPackage);
-    return newPackage;
+  async create(packageData: PackageInsert): Promise<Package | null> {
+    const { data, error } = await supabase
+      .from('packages')
+      .insert(packageData)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating package:', error);
+      throw new Error('فشل في إضافة الطرد');
+    }
+
+    return data;
   }
 };
 
 export const packageTemplatesService = {
   async getAll(): Promise<PackageTemplate[]> {
-    await simulateNetworkDelay();
-    return [...mockPackageTemplates];
+    const { data, error } = await supabase
+      .from('package_templates')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching templates:', error);
+      return [];
+    }
+
+    return data || [];
   },
 
   async getByOrganization(organizationId: string): Promise<PackageTemplate[]> {
-    await simulateNetworkDelay();
-    return mockPackageTemplates.filter(t => t.organization_id === organizationId);
+    const { data, error } = await supabase
+      .from('package_templates')
+      .select('*')
+      .eq('organization_id', organizationId)
+      .order('name');
+
+    if (error) {
+      console.error('Error fetching templates by organization:', error);
+      return [];
+    }
+
+    return data || [];
   },
 
-  async createWithItems(template: any, items: any[]): Promise<PackageTemplate> {
-    await simulateNetworkDelay();
-    const newTemplate: PackageTemplate = {
-      id: `template-${Date.now()}`,
-      name: template.name,
-      type: template.type,
-      organization_id: template.organization_id,
-      description: template.description,
-      contents: items,
-      status: 'active',
-      createdAt: new Date().toISOString(),
-      usageCount: 0,
-      totalWeight: items.reduce((sum, item) => sum + (item.weight || 0), 0),
-      estimatedCost: template.estimatedCost || 0
+  async createWithItems(template: PackageTemplateInsert, items: any[]): Promise<PackageTemplate | null> {
+    const templateData = {
+      ...template,
+      contents: items
     };
-    
-    mockPackageTemplates.unshift(newTemplate);
-    return newTemplate;
+
+    const { data, error } = await supabase
+      .from('package_templates')
+      .insert(templateData)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating template:', error);
+      throw new Error('فشل في إضافة القالب');
+    }
+
+    return data;
   }
 };
 
 export const tasksService = {
   async getAll(): Promise<Task[]> {
-    await simulateNetworkDelay();
-    return [...mockTasks];
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching tasks:', error);
+      return [];
+    }
+
+    return data || [];
   },
 
   async getByBeneficiary(beneficiaryId: string): Promise<Task[]> {
-    await simulateNetworkDelay();
-    return mockTasks.filter(t => t.beneficiaryId === beneficiaryId);
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('beneficiary_id', beneficiaryId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching tasks by beneficiary:', error);
+      return [];
+    }
+
+    return data || [];
   },
 
-  async updateStatus(id: string, status: Task['status'], updates?: any): Promise<Task> {
-    await simulateNetworkDelay();
-    const index = mockTasks.findIndex(t => t.id === id);
-    if (index === -1) {
-      throw new Error('المهمة غير موجودة');
-    }
-    
-    mockTasks[index] = {
-      ...mockTasks[index],
+  async updateStatus(id: string, status: string, updates?: TaskUpdate): Promise<Task | null> {
+    const updateData = {
       status,
       ...updates
     };
-    
-    return mockTasks[index];
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating task status:', error);
+      throw new Error('فشل في تحديث حالة المهمة');
+    }
+
+    return data;
   }
 };
 
 export const alertsService = {
   async getAll(): Promise<Alert[]> {
-    await simulateNetworkDelay();
-    return [...mockAlerts];
+    const { data, error } = await supabase
+      .from('alerts')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching alerts:', error);
+      return [];
+    }
+
+    return data || [];
   },
 
   async getUnread(): Promise<Alert[]> {
-    await simulateNetworkDelay();
-    return mockAlerts.filter(a => !a.isRead);
+    const { data, error } = await supabase
+      .from('alerts')
+      .select('*')
+      .eq('is_read', false)
+      .order('priority', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching unread alerts:', error);
+      return [];
+    }
+
+    return data || [];
   },
 
   async markAsRead(id: string): Promise<void> {
-    await simulateNetworkDelay();
-    const alert = mockAlerts.find(a => a.id === id);
-    if (alert) {
-      alert.isRead = true;
+    const { error } = await supabase
+      .from('alerts')
+      .update({ is_read: true })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error marking alert as read:', error);
     }
+  },
+
+  async create(alert: AlertInsert): Promise<Alert | null> {
+    const { data, error } = await supabase
+      .from('alerts')
+      .insert(alert)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating alert:', error);
+      return null;
+    }
+
+    return data;
   }
 };
 
 export const activityLogService = {
   async getAll(): Promise<ActivityLog[]> {
-    await simulateNetworkDelay();
-    return [...mockActivityLog];
+    const { data, error } = await supabase
+      .from('activity_log')
+      .select('*')
+      .order('timestamp', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching activity log:', error);
+      return [];
+    }
+
+    return data || [];
   },
 
   async getByBeneficiary(beneficiaryId: string): Promise<ActivityLog[]> {
-    await simulateNetworkDelay();
-    return mockActivityLog.filter(a => a.beneficiaryId === beneficiaryId);
+    const { data, error } = await supabase
+      .from('activity_log')
+      .select('*')
+      .eq('beneficiary_id', beneficiaryId)
+      .order('timestamp', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching activity log by beneficiary:', error);
+      return [];
+    }
+
+    return data || [];
+  },
+
+  async create(log: ActivityLogInsert): Promise<void> {
+    const { error } = await supabase
+      .from('activity_log')
+      .insert(log);
+
+    if (error) {
+      console.error('Error creating activity log:', error);
+    }
   }
 };
 
 export const couriersService = {
   async getAll(): Promise<Courier[]> {
-    await simulateNetworkDelay();
-    return [...mockCouriers];
+    const { data, error } = await supabase
+      .from('couriers')
+      .select('*')
+      .order('name');
+
+    if (error) {
+      console.error('Error fetching couriers:', error);
+      return [];
+    }
+
+    return data || [];
   },
 
   async getAllWithPerformance(): Promise<Courier[]> {
-    await simulateNetworkDelay();
-    return [...mockCouriers];
+    return this.getAll();
   },
 
-  async updateLocation(courierId: string, location: any): Promise<any> {
-    await simulateNetworkDelay();
-    const courier = mockCouriers.find(c => c.id === courierId);
-    if (courier) {
-      courier.currentLocation = { lat: location.latitude, lng: location.longitude };
+  async updateLocation(courierId: string, location: any): Promise<void> {
+    const { error } = await supabase
+      .from('couriers')
+      .update({ current_location: location })
+      .eq('id', courierId);
+
+    if (error) {
+      console.error('Error updating courier location:', error);
     }
-    return { success: true };
   }
 };
 
 export const rolesService = {
   async getAll(): Promise<Role[]> {
-    await simulateNetworkDelay();
-    return [...mockRoles];
+    const { data, error } = await supabase
+      .from('roles')
+      .select('*')
+      .order('name');
+
+    if (error) {
+      console.error('Error fetching roles:', error);
+      return [];
+    }
+
+    return data || [];
   }
 };
 
 export const systemUsersService = {
   async getAll(): Promise<SystemUser[]> {
-    await simulateNetworkDelay();
-    return [...mockSystemUsers];
+    const { data, error } = await supabase
+      .from('system_users')
+      .select('*')
+      .order('name');
+
+    if (error) {
+      console.error('Error fetching system users:', error);
+      return [];
+    }
+
+    return data || [];
   }
 };
 
 export const permissionsService = {
   async getAll(): Promise<Permission[]> {
-    await simulateNetworkDelay();
-    return [...mockPermissions];
+    const { data, error } = await supabase
+      .from('permissions')
+      .select('*')
+      .order('name');
+
+    if (error) {
+      console.error('Error fetching permissions:', error);
+      return [];
+    }
+
+    return data || [];
   }
 };
 
 export const statisticsService = {
   async getOverallStats(): Promise<any> {
-    await simulateNetworkDelay();
-    return calculateStats();
+    const [beneficiaries, packages, tasks, organizations] = await Promise.all([
+      supabase.from('beneficiaries').select('*', { count: 'exact', head: true }),
+      supabase.from('packages').select('*', { count: 'exact', head: true }),
+      supabase.from('tasks').select('*', { count: 'exact', head: true }),
+      supabase.from('organizations').select('*', { count: 'exact', head: true })
+    ]);
+
+    const deliveredPackages = await supabase
+      .from('packages')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'delivered');
+
+    return {
+      totalBeneficiaries: beneficiaries.count || 0,
+      totalPackages: packages.count || 0,
+      deliveredPackages: deliveredPackages.count || 0,
+      activeTasks: tasks.count || 0,
+      activeOrganizations: organizations.count || 0,
+      deliveryRate: packages.count ? ((deliveredPackages.count || 0) / packages.count * 100) : 0
+    };
   },
 
   async getGeographicStats(): Promise<any[]> {
-    await simulateNetworkDelay();
-    return [
-      { area_name: 'خان يونس', total_beneficiaries: 156, delivered_packages: 89, pending_packages: 23, success_rate: 79.5 },
-      { area_name: 'غزة', total_beneficiaries: 234, delivered_packages: 187, pending_packages: 34, success_rate: 84.6 },
-      { area_name: 'رفح', total_beneficiaries: 98, delivered_packages: 67, pending_packages: 18, success_rate: 78.8 },
-      { area_name: 'الوسطى', total_beneficiaries: 123, delivered_packages: 95, pending_packages: 15, success_rate: 86.4 },
-      { area_name: 'شمال غزة', total_beneficiaries: 87, delivered_packages: 62, pending_packages: 12, success_rate: 83.8 }
-    ];
+    return [];
   },
 
   async generateComprehensiveReport(startDate?: string, endDate?: string): Promise<any> {
-    await simulateNetworkDelay();
-    const stats = calculateStats();
+    const stats = await this.getOverallStats();
+
     return {
       period: {
         start_date: startDate || '2024-01-01',
@@ -362,20 +656,18 @@ export const statisticsService = {
       performance: {
         delivery_rate: stats.deliveryRate,
         average_delivery_time: 2.3
-      },
-      geographic_distribution: await this.getGeographicStats()
+      }
     };
   }
 };
 
 export const systemService = {
   async createAutomaticAlerts(): Promise<void> {
-    await simulateNetworkDelay();
+    console.log('Creating automatic alerts...');
   },
 
   async calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): Promise<number> {
-    await simulateNetworkDelay();
-    const R = 6371; // نصف قطر الأرض بالكيلومتر
+    const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -386,7 +678,6 @@ export const systemService = {
   },
 
   async generateTrackingNumber(): Promise<string> {
-    await simulateNetworkDelay();
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
     return `TRK-${date}-${random}`;
@@ -395,103 +686,86 @@ export const systemService = {
 
 export const inventoryService = {
   async getByDistributionCenter(centerId: string): Promise<any[]> {
-    await simulateNetworkDelay();
     return [];
   },
 
   async getLowStock(): Promise<any[]> {
-    await simulateNetworkDelay();
     return [];
   }
 };
 
 export const categoriesService = {
   async getAllBeneficiaryCategories(): Promise<any[]> {
-    await simulateNetworkDelay();
     return [];
   }
 };
 
 export const notificationsService = {
   async send(notification: any): Promise<any> {
-    await simulateNetworkDelay();
     return { success: true };
   },
 
   async getByUser(userId: string): Promise<any[]> {
-    await simulateNetworkDelay();
     return [];
   }
 };
 
 export const feedbackService = {
   async create(feedback: any): Promise<any> {
-    await simulateNetworkDelay();
     return { success: true };
   },
 
   async getByCourier(courierId: string): Promise<any[]> {
-    await simulateNetworkDelay();
     return [];
   }
 };
 
 export const geographicService = {
   async getAllAreas(): Promise<any[]> {
-    await simulateNetworkDelay();
     return [];
   },
 
   async getByType(type: string): Promise<any[]> {
-    await simulateNetworkDelay();
     return [];
   }
 };
 
 export const distributionCentersService = {
   async getAll(): Promise<any[]> {
-    await simulateNetworkDelay();
     return [];
   },
 
   async getActive(): Promise<any[]> {
-    await simulateNetworkDelay();
     return [];
   }
 };
 
 export const settingsService = {
   async getSetting(category: string, key: string): Promise<any> {
-    await simulateNetworkDelay();
     return null;
   },
 
   async updateSetting(category: string, key: string, value: string): Promise<any> {
-    await simulateNetworkDelay();
     return { success: true };
   },
 
   async getByCategory(category: string): Promise<any[]> {
-    await simulateNetworkDelay();
     return [];
   }
 };
 
 export const emergencyContactsService = {
   async getByBeneficiary(beneficiaryId: string): Promise<any[]> {
-    await simulateNetworkDelay();
     return [];
   },
 
   async create(contact: any): Promise<any> {
-    await simulateNetworkDelay();
     return { success: true };
   }
 };
 
 export const reportsService = {
   async generateReport(type: string, parameters: any = {}): Promise<any> {
-    await simulateNetworkDelay();
     return await statisticsService.generateComprehensiveReport(
       parameters.start_date,
       parameters.end_date
