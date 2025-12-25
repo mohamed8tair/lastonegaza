@@ -28,6 +28,9 @@ import SystemSettingsPage from './pages/SystemSettingsPage';
 import BackupManagementPage from './pages/BackupManagementPage';
 import AlertsManagementPage from './pages/AlertsManagementPage';
 import MessagesSettingsPage from './pages/MessagesSettingsPage';
+import CouriersManagementPage from './pages/CouriersManagementPage';
+import FamiliesListPage from './pages/FamiliesListPage';
+import AuditLogPage from './pages/AuditLogPage';
 
 interface NavItem {
   id: string;
@@ -509,20 +512,41 @@ export default function AdminDashboard({ activeTab, setActiveTab }: AdminDashboa
               <p className="text-gray-600 mt-1">{pageInfo.description}</p>
             </div>
           </div>
-          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
-            <div className="text-center">
-              <div className="bg-gray-100 rounded-2xl p-12 mb-6">
-                <div className="text-gray-400 text-center">
-                  <Heart className="w-20 h-20 mx-auto mb-4" />
-                </div>
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">إدارة العائلات</h3>
-              <p className="text-gray-600 mb-6">هذا القسم قيد التطوير - سيتم إضافة التفاصيل الكاملة قريباً</p>
-              <button className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-4 rounded-xl font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-200 transform hover:scale-105 shadow-lg">
-                ابدأ التطوير
-              </button>
+          <FamiliesListPage />
+        </div>
+      );
+    }
+
+    if (activeTab === 'couriers') {
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center space-x-4 space-x-reverse">
+            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+              <IconComponent className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-900">{pageInfo.name}</h2>
+              <p className="text-gray-600 mt-1">{pageInfo.description}</p>
             </div>
           </div>
+          <CouriersManagementPage />
+        </div>
+      );
+    }
+
+    if (activeTab === 'audit') {
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center space-x-4 space-x-reverse">
+            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+              <IconComponent className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-900">{pageInfo.name}</h2>
+              <p className="text-gray-600 mt-1">{pageInfo.description}</p>
+            </div>
+          </div>
+          <AuditLogPage />
         </div>
       );
     }
