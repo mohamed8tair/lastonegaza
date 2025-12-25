@@ -4,7 +4,7 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { useAuth } from '../context/AuthContext';
 import { useAlerts } from '../context/AlertsContext';
 import { useErrorLogger } from '../utils/errorLogger';
-import { statisticsService, alertsService } from '../services/supabaseService';
+import { statisticsService, alertsService, organizationsService, familiesService, beneficiariesService, packagesService } from '../services/supabaseService';
 import { Shield, Users, Package, Truck, Bell, BarChart3, Settings, MapPin, Calendar, FileText, AlertTriangle, CheckCircle, Clock, Plus, Search, Filter, Download, Eye, Edit, Phone, Star, UserPlus, Building2, Heart, TrendingUp, Activity, Database, MessageSquare, UserCheck, Crown, Key, Lock, ChevronRight, RefreshCw, LogOut } from 'lucide-react';
 import { calculateStats } from '../data/mockData';
 import PermissionsManagement from './PermissionsManagement';
@@ -59,12 +59,51 @@ export default function AdminDashboard({ activeTab, setActiveTab }: AdminDashboa
   const [stats, setStats] = useState<any>(calculateStats());
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState<string | null>(null);
+  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [families, setFamilies] = useState<any[]>([]);
+  const [beneficiaries, setBeneficiaries] = useState<any[]>([]);
+  const [packages, setPackages] = useState<any[]>([]);
 
   // Fetch data from Supabase
   useEffect(() => {
-    setStats(calculateStats());
-    logInfo('تم تحميل البيانات الوهمية بنجاح', 'AdminDashboard');
-  }, [logInfo]);
+    const fetchData = async () => {
+      try {
+        setStatsLoading(true);
+        logInfo('بدء تحميل البيانات من Supabase', 'AdminDashboard');
+
+        const [statsData, orgsData, familiesData, beneficiariesData, packagesData] = await Promise.all([
+          statisticsService.getOverallStats(),
+          organizationsService.getAll(),
+          familiesService.getAll(),
+          beneficiariesService.getAll(),
+          packagesService.getAll()
+        ]);
+
+        setStats({
+          totalBeneficiaries: statsData.totalBeneficiaries,
+          totalPackages: statsData.totalPackages,
+          deliveredPackages: statsData.deliveredPackages,
+          activeOrganizations: statsData.activeOrganizations,
+          activeTasks: statsData.activeTasks,
+          deliveryRate: statsData.deliveryRate
+        });
+
+        setOrganizations(orgsData);
+        setFamilies(familiesData);
+        setBeneficiaries(beneficiariesData);
+        setPackages(packagesData);
+
+        logInfo('تم تحميل البيانات من Supabase بنجاح', 'AdminDashboard');
+      } catch (error) {
+        logError('فشل تحميل البيانات من Supabase', 'AdminDashboard', error);
+        setStatsError('فشل تحميل البيانات');
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [logInfo, logError]);
 
   const handleNavigateToIndividualSend = (beneficiaryId: string) => {
     setBeneficiaryIdForIndividualSend(beneficiaryId);
@@ -227,11 +266,13 @@ export default function AdminDashboard({ activeTab, setActiveTab }: AdminDashboa
     const reportData = {
       date: new Date().toISOString(),
       stats,
-      beneficiaries: mockBeneficiaries.length,
-      packages: mockPackages.length,
+      beneficiaries: beneficiaries.length,
+      packages: packages.length,
+      organizations: organizations.length,
+      families: families.length,
       alerts: unreadAlerts.length
     };
-    
+
     const dataStr = JSON.stringify(reportData, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
@@ -240,7 +281,7 @@ export default function AdminDashboard({ activeTab, setActiveTab }: AdminDashboa
     link.download = `تقرير_النظام_${new Date().toISOString().split('T')[0]}.json`;
     link.click();
     URL.revokeObjectURL(url);
-    
+
     alert('تم تصدير تقرير النظام بنجاح');
   };
 
@@ -856,17 +897,26 @@ export default function AdminDashboard({ activeTab, setActiveTab }: AdminDashboa
                 </Button>
               </div>
               <div className="space-y-4">
-                {mockOrganizations.slice(0, 3).map((org) => (
-                  <div key={org.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <div>
-                      <p className="font-medium text-gray-900">{org.name}</p>
-                      <p className="text-sm text-gray-600">{org.beneficiariesCount} مستفيد</p>
-                    </div>
-                    <Badge variant={org.status === 'active' ? 'success' : 'warning'} size="sm">
-                      {org.status === 'active' ? 'نشطة' : 'معلقة'}
-                    </Badge>
+                {organizations.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Building2 className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                    <p>لا توجد مؤسسات مسجلة</p>
                   </div>
-                ))}
+                ) : (
+                  organizations.slice(0, 3).map((org) => (
+                    <div key={org.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div>
+                        <p className="font-medium text-gray-900">{org.name}</p>
+                        <p className="text-sm text-gray-600">
+                          {beneficiaries.filter(b => b.organization_id === org.id).length} مستفيد
+                        </p>
+                      </div>
+                      <Badge variant={org.status === 'active' ? 'success' : 'warning'} size="sm">
+                        {org.status === 'active' ? 'نشطة' : 'معلقة'}
+                      </Badge>
+                    </div>
+                  ))
+                )}
               </div>
             </Card>
 
@@ -882,18 +932,27 @@ export default function AdminDashboard({ activeTab, setActiveTab }: AdminDashboa
                 </Button>
               </div>
               <div className="space-y-4">
-                {mockFamilies.map((family) => (
-                  <div key={family.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <div>
-                      <p className="font-medium text-gray-900">{family.name}</p>
-                      <p className="text-sm text-gray-600">{family.membersCount} فرد</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-purple-600">{family.completionRate}%</p>
-                      <p className="text-xs text-gray-500">نسبة الإنجاز</p>
-                    </div>
+                {families.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                    <p>لا توجد عائلات مسجلة</p>
                   </div>
-                ))}
+                ) : (
+                  families.slice(0, 3).map((family) => (
+                    <div key={family.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div>
+                        <p className="font-medium text-gray-900">{family.family_name}</p>
+                        <p className="text-sm text-gray-600">{family.members_count || 0} فرد</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-blue-600">
+                          {beneficiaries.filter(b => b.family_id === family.id).length}
+                        </p>
+                        <p className="text-xs text-gray-500">مستفيدين</p>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </Card>
           </div>
